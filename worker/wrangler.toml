@@ -1,0 +1,8 @@
+name = "habdana-api"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+workers_dev = true
+
+[vars]
+GROQ_MODEL = "llama-3.3-70b-versatile"
+ALLOWED_ORIGIN = "*"
