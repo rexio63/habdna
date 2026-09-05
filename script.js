@@ -12,6 +12,7 @@ const state = {
   quizIndex: 0,
   musicRounds: [],
   musicIndex: 0,
+  musicAudio: null,
   governorIndex: 0,
   roles: []
 };
@@ -63,7 +64,7 @@ const quizCategories = [
   {id:"ترفيه وأفلام", label:"🎬 ترفيه وأفلام"}
 ];
 
-// خمن الأغنية: أنواع موسيقية تُستخدم للبحث عبر Spotify (المعرّف id يجب أن يطابق GENRE_QUERIES في worker.js).
+// خمن الأغنية: أنواع بحث مجانية عبر iTunes Search API — بدون مفتاح API أو اشتراك.
 const musicGenres = [
   {id:"arabic-pop", label:"🎤 عربي"},
   {id:"khaleeji", label:"🪘 خليجي"},
@@ -138,17 +139,22 @@ function setupAiOptions(game){
   });
 
   $("categoryLabel").textContent = game==="quiz" ? "تصنيف الأسئلة" : "نوع الموسيقى";
-  $("aiToggleLabel").textContent = game==="quiz"
-    ? "توليد أسئلة جديدة بالذكاء الاصطناعي (Groq)"
-    : "جلب أغانٍ حقيقية من Spotify";
 
-  const configured=isWorkerConfigured();
   const toggle=$("useAiToggle");
-  toggle.disabled=!configured;
-  toggle.checked=configured;
-  $("aiHint").textContent = configured
-    ? ""
-    : "لتفعيل هذه الميزة: انشر الخادم (Worker) وضع رابطه في ملف config.js — راجع README.md.";
+  if(game==="quiz") {
+    $("aiToggleLabel").textContent = "توليد أسئلة جديدة بالذكاء الاصطناعي (Groq)";
+    const configured=isWorkerConfigured();
+    toggle.disabled=!configured;
+    toggle.checked=configured;
+    $("aiHint").textContent = configured
+      ? ""
+      : "لتفعيل الذكاء الاصطناعي: انشر الخادم (Worker) وضع رابطه في config.js.";
+  } else {
+    $("aiToggleLabel").textContent = "جلب أغانٍ حقيقية مجانًا 🎵";
+    toggle.disabled=false;
+    toggle.checked=true;
+    $("aiHint").textContent = "لا يحتاج Spotify أو Premium أو مفتاح API. تُستخدم معاينات موسيقية متاحة عبر iTunes.";
+  }
 }
 
 function setMode(mode){
@@ -293,55 +299,80 @@ function answerQuiz(choice,button){
 }
 
 // ===================== خمن الأغنية =====================
-async function fetchSpotifyTracks(genreId){
-  const res=await fetch(`${WORKER_BASE_URL}/api/songs?genre=${encodeURIComponent(genreId)}`);
-  if(!res.ok) throw new Error("songs_api_failed");
-  const data=await res.json();
-  if(!data||!Array.isArray(data.tracks) || data.tracks.length<4) throw new Error("not_enough_tracks");
-  return data.tracks;
+async function fetchITunesTracks(genreId){
+  const queries={
+    "arabic-pop":["Arabic pop","Amr Diab","Nancy Ajram","Elissa"],
+    "khaleeji":["Khaleeji Arabic","Rashed Al Majed","Abdulmajeed Abdullah"],
+    "egyptian":["Egyptian pop","Egyptian songs","Mahraganat"],
+    "english-pop":["English pop hits","pop hits"],
+    "hiphop":["hip hop rap","rap hits"],
+    "tarab":["Arabic tarab","Umm Kulthum","Fairuz"]
+  };
+  const terms=queries[genreId]||queries["arabic-pop"];
+  const all=[];
+  for(const term of terms){
+    const url=`https://itunes.apple.com/search?term=${encodeURIComponent(term)}&entity=song&limit=25&country=US&lang=en_us`;
+    const res=await fetch(url);
+    if(!res.ok) continue;
+    const data=await res.json();
+    (data.results||[]).forEach(t=>{
+      if(t && t.trackId && t.trackName && t.artistName && t.previewUrl) all.push({
+        id:t.trackId,
+        name:t.trackName,
+        artist:t.artistName,
+        image:t.artworkUrl100 ? t.artworkUrl100.replace('100x100','600x600') : null,
+        previewUrl:t.previewUrl
+      });
+    });
+  }
+  const unique=[...new Map(all.map(t=>[t.id,t])).values()];
+  if(unique.length<4) throw new Error("not_enough_tracks");
+  return shuffle(unique);
 }
 
 function buildMusicRoundsFromTracks(tracks){
-  const pool=shuffle(tracks.filter(t=>t && t.name && t.artist));
+  const pool=shuffle(tracks.filter(t=>t && t.name && t.artist && t.previewUrl));
   const count=Math.min(state.maxRounds,pool.length);
   const rounds=[];
   for(let i=0;i<count;i++){
     const correct=pool[i];
-    const distractors=shuffle(pool.filter(t=>t!==correct)).slice(0,3);
+    const distractors=shuffle(pool.filter(t=>t.id!==correct.id)).slice(0,3);
     if(distractors.length<3) break;
     const options=shuffle([correct,...distractors]);
     rounds.push({
-      clue:"خمن اسم الأغنية من صورة الغلاف 🎧",
+      clue:"اسمع المقطع القصير وخمّن اسم الأغنية 🎧",
       image:correct.image||null,
+      previewUrl:correct.previewUrl,
       a:options.map(o=>`${o.name} — ${o.artist}`),
-      c:options.indexOf(correct)
+      c:options.findIndex(o=>o.id===correct.id)
     });
   }
   return rounds;
 }
 
 async function startMusic(){
+  stopMusicPreview();
   showScreen("music");
   $("musicClue").textContent="جارٍ تحضير الأغاني...";
   $("musicClue").classList.add("loading-text");
   $("musicAnswers").innerHTML="";
   $("musicFeedback").textContent="";
 
-  const useApi = !!$("useAiToggle")?.checked;
-  const genreId = $("categorySelect")?.value || "arabic-pop";
+  const useApi=!!$("useAiToggle")?.checked;
+  const genreId=$("categorySelect")?.value||"arabic-pop";
   let rounds=null;
 
-  if(useApi && isWorkerConfigured()){
+  if(useApi){
     try{
-      const tracks=await withTimeout(fetchSpotifyTracks(genreId),15000);
+      const tracks=await withTimeout(fetchITunesTracks(genreId),15000);
       rounds=buildMusicRoundsFromTracks(tracks);
     }catch(e){
-      toast("تعذر جلب الأغاني من Spotify، تم استخدام الأغاني المحلية 🎵");
+      toast("تعذر جلب الأغاني الآن، تم استخدام الأغاني المحلية 🎵");
     }
   }
 
   if(!rounds || rounds.length<Math.min(3,state.maxRounds)){
-    rounds=musicBank.map(item=>({clue:item.clue,a:item.a,c:item.c,image:null}));
+    rounds=musicBank.map(item=>({clue:item.clue,a:item.a,c:item.c,image:null,previewUrl:null}));
   }
 
   $("musicClue").classList.remove("loading-text");
@@ -350,13 +381,14 @@ async function startMusic(){
   nextMusic();
 }
 function nextMusic(){
+  stopMusicPreview();
   const rounds=state.musicRounds;
   if(state.musicIndex>=rounds.length){finishGame();return}
   const item=rounds[state.musicIndex];
   $("musicRound").textContent=`الجولة ${state.musicIndex+1} / ${rounds.length}`;
   $("musicScore").textContent=`${state.players[0]?.score||0} نقطة`;
   $("musicClue").textContent=item.clue;$("musicFeedback").textContent="";
-  $("vinyl").classList.remove("playing");$("playMusicBtn").textContent="▶ تشغيل المقطع";
+  $("vinyl").classList.remove("playing");$("playMusicBtn").textContent=item.previewUrl?"▶ تشغيل المقطع":"▶ تشغيل صوت";
 
   const cover=$("songCover");
   if(item.image){
@@ -374,16 +406,41 @@ function nextMusic(){
     b.onclick=()=>answerMusic(x.i,b);box.appendChild(b);
   });
 }
-function playFakeMusic(){
-  const v=$("vinyl");
-  if(v.classList.contains("hidden"))return;
-  v.classList.toggle("playing");
-  $("playMusicBtn").textContent=v.classList.contains("playing")?"⏸ إيقاف المقطع":"▶ تشغيل المقطع";
-  beep("click");
+function playMusicPreview(){
+  const item=state.musicRounds[state.musicIndex];
+  if(!item?.previewUrl){
+    toast("هذه الجولة لا تحتوي على معاينة صوتية — اختر الإجابة مباشرة 🎵");
+    beep("click");
+    return;
+  }
+  if(state.musicAudio){
+    if(!state.musicAudio.paused){
+      stopMusicPreview();
+      return;
+    }
+  }
+  const audio=new Audio(item.previewUrl);
+  audio.volume=.85;
+  audio.onended=()=>stopMusicPreview();
+  audio.onerror=()=>{stopMusicPreview();toast("تعذر تشغيل المقطع الصوتي");};
+  state.musicAudio=audio;
+  audio.play().then(()=>{
+    $("vinyl").classList.add("playing");
+    $("playMusicBtn").textContent="⏸ إيقاف المقطع";
+  }).catch(()=>toast("اضغط زر التشغيل مرة أخرى للسماح بتشغيل الصوت"));
+}
+function stopMusicPreview(){
+  if(state.musicAudio){
+    try{state.musicAudio.pause();state.musicAudio.currentTime=0;}catch(e){}
+    state.musicAudio=null;
+  }
+  if($("vinyl")) $("vinyl").classList.remove("playing");
+  if($("playMusicBtn")) $("playMusicBtn").textContent="▶ تشغيل المقطع";
 }
 function answerMusic(choice,button){
   const rounds=state.musicRounds;
   const item=rounds[state.musicIndex];
+  stopMusicPreview();
   document.querySelectorAll("#musicAnswers .answer").forEach(b=>b.classList.add("disabled"));
   const correct=choice===item.c;button.classList.add(correct?"correct":"wrong");
   if(!correct){

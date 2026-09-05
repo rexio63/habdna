@@ -1,7 +1,7 @@
 name: Deploy HABDANA API Worker
 
 # ينشر مجلد worker/ (الوسيط الآمن بين الموقع و Groq/Spotify) على Cloudflare Workers.
-# يقرأ كل المفاتيح السرية من GitHub Secrets ويضعها مباشرة في Cloudflare
+# يقرأ مفتاح Groq السري من GitHub Secrets ويضعها مباشرة في Cloudflare
 # عبر "wrangler secret put" — لا يتم كتابتها أبدًا في أي ملف بالمستودع.
 
 on:
@@ -39,8 +39,6 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           echo "${{ secrets.GROQ_API_KEY }}" | wrangler secret put GROQ_API_KEY
-          echo "${{ secrets.SPOTIFY_CLIENT_ID }}" | wrangler secret put SPOTIFY_CLIENT_ID
-          echo "${{ secrets.SPOTIFY_CLIENT_SECRET }}" | wrangler secret put SPOTIFY_CLIENT_SECRET
 
       - name: Deploy Worker
         env:

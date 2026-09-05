@@ -5,7 +5,7 @@
 
 يحتوي على 3 ألعاب:
 - 🧠 **هبد الأسئلة** — أسئلة عامة، مع إمكانية توليد أسئلة جديدة عربية عبر **Groq API**.
-- 🎵 **خمن الأغنية** — تخمين محلي، مع إمكانية جلب أغانٍ حقيقية (اسم + فنان + صورة غلاف) عبر **Spotify API**.
+- 🎵 **خمن الأغنية** — تخمين محلي، مع إمكانية جلب أغانٍ حقيقية (اسم + فنان + صورة غلاف + معاينة صوتية قصيرة) عبر **iTunes Search API** المجاني، بدون Spotify Premium أو مفتاح Spotify.
 - 👑 **الحاكم والجلاد** — لعبة أدوار اجتماعية (بدون تغيير).
 
 ---
@@ -18,7 +18,7 @@
 > سيكون مرئيًا لأي شخص يفتح "أدوات المطور" في المتصفح، حتى لو كان الكود "مخفيًا" أو مُشفّرًا شكليًا.
 > **لا توجد طريقة لإخفاء مفتاح سري داخل كود يعمل في متصفح المستخدم.**
 
-لذلك، ولحماية مفاتيح `GROQ_API_KEY` و `SPOTIFY_CLIENT_ID` و `SPOTIFY_CLIENT_SECRET` فعليًا:
+لذلك، ولحماية مفاتيح `GROQ_API_KEY` فعليًا:
 
 - الموقع نفسه (`index.html`, `style.css`, `script.js`, `config.js`) يبقى **ثابتًا 100%** ويُنشر على GitHub Pages كما طلبت، بدون أي Framework.
 - مجلد `worker/` يحتوي على **خادم وسيط صغير جدًا (Cloudflare Worker)** — سطر كود واحد تقريبًا لكل مسار — مهمته الوحيدة استقبال الطلب من موقعك، إضافة المفتاح السري من متغيرات البيئة، ثم تمرير الطلب إلى Groq أو Spotify وإرجاع النتيجة فقط.
@@ -50,13 +50,10 @@
 
 ## 3) خطوات الإعداد الكاملة
 
-### أ) إنشاء مفاتيح Groq و Spotify
+### أ) إنشاء مفاتيح Groq فقط
 
 1. **Groq**: أنشئ حسابًا على https://console.groq.com ثم أنشئ مفتاح API من صفحة "API Keys". هذا هو `GROQ_API_KEY`.
-2. **Spotify**: افتح https://developer.spotify.com/dashboard وسجّل الدخول، ثم اضغط "Create app". بعد الإنشاء ستجد:
-   - `Client ID` → هذا هو `SPOTIFY_CLIENT_ID`
-   - `Client secret` → هذا هو `SPOTIFY_CLIENT_SECRET`
-   (لا تحتاج لضبط Redirect URI لأننا نستخدم Client Credentials Flow فقط للبحث، بدون تسجيل دخول مستخدم).
+2. **الأغاني**: لا تحتاج إلى حساب Spotify أو مفتاح API. اللعبة تستخدم iTunes Search API مباشرة لجلب أسماء الأغاني وصور الأغلفة ومعاينات صوتية قصيرة.
 
 ### ب) إنشاء حساب Cloudflare (مجاني) للخادم الوسيط
 
@@ -77,8 +74,6 @@ Settings → Secrets and variables → Actions → New repository secret
 | اسم السر | القيمة |
 |---|---|
 | `GROQ_API_KEY` | مفتاح Groq |
-| `SPOTIFY_CLIENT_ID` | Client ID من Spotify |
-| `SPOTIFY_CLIENT_SECRET` | Client Secret من Spotify |
 | `CLOUDFLARE_API_TOKEN` | التوكن الذي أنشأته في Cloudflare |
 | `CLOUDFLARE_ACCOUNT_ID` | معرّف حساب Cloudflare |
 
@@ -142,7 +137,7 @@ Settings → Pages → Build and deployment → Source: GitHub Actions
 - ✅ الروابط بين `index.html` و `style.css` و `config.js` و `script.js` تعمل بالترتيب الصحيح (config.js يُحمَّل قبل script.js لأن `WORKER_BASE_URL` يُستخدم داخله).
 - ✅ تصحيح خطأ مطبعي في `style.css` كان يمنع تعطيل الأزرار بعد الإجابة (`..answer.disabled` ← `.answer.disabled`).
 - ✅ كل معرّفات (`id`) العناصر المستخدمة في `script.js` موجودة فعليًا في `index.html`.
-- ✅ التحقق من صحة شكل البيانات القادمة من Groq و Spotify قبل استخدامها (لتفادي أخطاء JavaScript إذا أرجعت الخدمة شكلًا غير متوقع).
+- ✅ التحقق من صحة شكل البيانات القادمة من Groq فقط قبل استخدامها (لتفادي أخطاء JavaScript إذا أرجعت الخدمة شكلًا غير متوقع).
 - ✅ مهلة زمنية (Timeout) لطلبات الشبكة حتى لا تتجمّد اللعبة إذا تأخر الرد.
 - ✅ رجوع تلقائي (Fallback) للأسئلة/الأغاني المحلية عند أي خطأ في الشبكة أو في الخادم.
 - ✅ لا يوجد أي `npm install` أو أي أداة بناء (Build Tool) مطلوبة لتشغيل الموقع نفسه — فقط الخادم الوسيط (اختياري) يحتاج `wrangler` وهو يُشغَّل تلقائيًا داخل GitHub Actions فقط.

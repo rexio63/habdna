@@ -128,7 +128,7 @@
         <img id="songCover" class="song-cover hidden" alt="غلاف الأغنية">
         <span class="tag">🎵 خمن الأغنية</span>
         <h2 id="musicClue"></h2>
-        <button class="play-btn" id="playMusicBtn" onclick="playFakeMusic()">▶ تشغيل المقطع</button>
+        <button class="play-btn" id="playMusicBtn" onclick="playMusicPreview()">▶ تشغيل المقطع</button>
         <div id="musicAnswers" class="answers"></div>
         <p id="musicFeedback" class="feedback"></p>
       </div>
@@ -172,7 +172,7 @@
         <div class="rule"><b>🏆 النقاط</b><p>كل إجابة صحيحة تمنحك نقاطًا. في النهاية يظهر ترتيب اللاعبين.</p></div>
         <div class="rule"><b>🔐 الحاكم والجلاد</b><p>كل لاعب يكشف دوره بسرية. ممنوع الغش 😈.</p></div>
         <div class="rule"><b>🧠 أسئلة الذكاء الاصطناعي</b><p>في لعبة "هبد الأسئلة" يمكنك اختيار تصنيف وتوليد أسئلة جديدة تلقائيًا في كل مرة عبر خدمة Groq.</p></div>
-        <div class="rule"><b>🎵 أغاني حقيقية</b><p>في لعبة "خمن الأغنية" يمكنك جلب أغانٍ حقيقية مع صور الغلاف من Spotify حسب النوع الموسيقي.</p></div>
+        <div class="rule"><b>🎵 أغاني حقيقية</b><p>في لعبة "خمن الأغنية" يمكنك جلب أغانٍ حقيقية مع صور الغلاف ومقاطع معاينة قصيرة مجانًا، بدون Spotify Premium.</p></div>
       </div>
     </section>
 
@@ -181,7 +181,7 @@
         <button class="back-btn" onclick="showScreen('home')">→ رجوع</button>
         <h2>هبدنا</h2>
         <p>نسخة ويب خفيفة تعمل بالكامل من المتصفح، بدون أي إطار عمل (Framework)، وتُنشر على GitHub Pages.</p>
-        <p class="muted">الأسئلة والأغاني المولّدة بالذكاء الاصطناعي تُجلب عبر خادم وسيط (Worker) يحمي مفاتيح الـ API ولا يظهرها أبدًا في المتصفح.</p>
+        <p class="muted">أسئلة الذكاء الاصطناعي تُجلب عبر خادم وسيط (Worker) يحمي مفتاح Groq، بينما لعبة الأغاني تستخدم مصدرًا مجانيًا ولا تحتاج مفتاح Spotify.</p>
       </div>
     </section>
   </main>

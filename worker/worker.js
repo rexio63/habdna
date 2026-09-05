@@ -3,30 +3,17 @@
  * ============================================================
  * هذا الملف هو خادم وسيط (Proxy) صغير يعمل على Cloudflare Workers.
  * وظيفته الوحيدة: استقبال طلبات من موقع HABDANA الثابت (GitHub Pages)
- * وتمريرها إلى Groq API و Spotify API باستخدام مفاتيح سرية
+ * وتمريرها إلى Groq API باستخدام مفتاح سري
  * لا تُخزَّن أبدًا في هذا الملف ولا في أي ملف داخل المستودع.
  *
  * المفاتيح تُقرأ حصرًا من متغيرات البيئة (env) التي تُضبط عبر:
  *   wrangler secret put GROQ_API_KEY
- *   wrangler secret put SPOTIFY_CLIENT_ID
- *   wrangler secret put SPOTIFY_CLIENT_SECRET
  * (راجع ملف README.md وworkflow النشر في .github/workflows/deploy-worker.yml)
  *
  * هذا الملف نفسه عام (Public) ومن الآمن رفعه على GitHub لأنه لا يحتوي
  * على أي قيمة سرية — فقط كود يقرأ المفاتيح من env وقت التشغيل.
  * ============================================================
  */
-
-// أنواع موسيقية مدعومة للبحث عبر Spotify — المعرّفات (id) يجب أن تطابق
-// القيم المستخدمة في musicGenres داخل script.js
-const GENRE_QUERIES = {
-  "arabic-pop": { q: "Arabic pop hits", market: "SA" },
-  "khaleeji": { q: "Khaleeji songs", market: "SA" },
-  "egyptian": { q: "Egyptian Mahraganat", market: "EG" },
-  "english-pop": { q: "English pop hits", market: "US" },
-  "hiphop": { q: "hip hop rap hits", market: "US" },
-  "tarab": { q: "classic Arabic tarab", market: "EG" }
-};
 
 // كاش بسيط داخل الذاكرة لتوكن Spotify (صالح فقط أثناء بقاء الـ Worker "دافئًا"،
 // وهو تحسين اختياري لتقليل عدد طلبات المصادقة، وليس تخزينًا دائمًا).
@@ -45,9 +32,6 @@ export default {
     try {
       if (url.pathname === "/api/quiz" && request.method === "POST") {
         return await handleQuiz(request, env, headers);
-      }
-      if (url.pathname === "/api/songs" && request.method === "GET") {
-        return await handleSongs(url, env, headers);
       }
       if (url.pathname === "/" || url.pathname === "") {
         return json({ ok: true, service: "habdana-api" }, 200, headers);
@@ -162,72 +146,4 @@ async function handleQuiz(request, env, headers) {
   }
 
   return json({ questions: cleaned }, 200, headers);
-}
-
-// ===================== خمن الأغنية (Spotify) =====================
-
-async function getSpotifyToken(env) {
-  const now = Date.now();
-  if (cachedToken && now < cachedTokenExpiry) return cachedToken;
-
-  if (!env.SPOTIFY_CLIENT_ID || !env.SPOTIFY_CLIENT_SECRET) {
-    throw new Error("missing_spotify_credentials");
-  }
-
-  const basic = btoa(`${env.SPOTIFY_CLIENT_ID}:${env.SPOTIFY_CLIENT_SECRET}`);
-  const res = await fetch("https://accounts.spotify.com/api/token", {
-    method: "POST",
-    headers: {
-      "Authorization": `Basic ${basic}`,
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body: "grant_type=client_credentials"
-  });
-
-  if (!res.ok) {
-    throw new Error("spotify_token_error");
-  }
-
-  const data = await res.json();
-  cachedToken = data.access_token;
-  cachedTokenExpiry = now + Math.max(0, (data.expires_in || 3600) - 60) * 1000;
-  return cachedToken;
-}
-
-async function handleSongs(url, env, headers) {
-  const genreId = url.searchParams.get("genre") || "arabic-pop";
-  const genre = GENRE_QUERIES[genreId] || GENRE_QUERIES["arabic-pop"];
-
-  let token;
-  try {
-    token = await getSpotifyToken(env);
-  } catch (e) {
-    return json({ error: "spotify_auth_failed", message: String(e.message || e) }, 500, headers);
-  }
-
-  const searchUrl = `https://api.spotify.com/v1/search?q=${encodeURIComponent(genre.q)}&type=track&limit=20&market=${genre.market}`;
-  const res = await fetch(searchUrl, { headers: { "Authorization": `Bearer ${token}` } });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    return json({ error: "spotify_search_error", detail: text.slice(0, 500) }, 502, headers);
-  }
-
-  const data = await res.json();
-  const items = (data && data.tracks && data.tracks.items) || [];
-
-  const tracks = items
-    .filter(t => t && t.name && Array.isArray(t.artists) && t.artists.length > 0)
-    .map(t => ({
-      name: t.name,
-      artist: t.artists.map(a => a.name).join(", "),
-      image: (t.album && t.album.images && t.album.images[0] && t.album.images[0].url) || null,
-      previewUrl: t.preview_url || null
-    }));
-
-  if (tracks.length < 4) {
-    return json({ error: "not_enough_tracks", tracks }, 502, headers);
-  }
-
-  return json({ tracks }, 200, headers);
 }
