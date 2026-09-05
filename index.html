@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111827">
+  <title>هبدنا | HABDANA</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="toast" class="toast"></div>
+
+  <header class="topbar">
+    <button class="brand" onclick="showScreen('home')">
+      <span class="brand-mark">ه</span>
+      <span><b>هبدنا</b><small>HABDANA</small></span>
+    </button>
+    <div class="top-actions">
+      <button class="icon-btn" onclick="toggleSound()" id="soundBtn" title="الصوت">🔊</button>
+      <button class="icon-btn" onclick="showScreen('rules')" title="المساعدة">?</button>
+    </div>
+  </header>
+
+  <main>
+    <section id="home" class="screen active">
+      <div class="hero">
+        <div class="hero-badge">🔥 لعبة الجلسات العربية</div>
+        <h1>هبدنا</h1>
+        <p>ضحك، تحدي، تخمين، وأسئلة... كل هذا في مكان واحد.</p>
+        <div class="hero-buttons">
+          <button class="primary big" onclick="showScreen('games')">ابدأ اللعب 🎮</button>
+          <button class="secondary big" onclick="showScreen('howto')">كيف نلعب؟</button>
+        </div>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature-card" onclick="startGame('quiz')">
+          <span>🧠</span><h3>هبد الأسئلة</h3><p>جاوب قبل أصحابك وخذ النقاط.</p>
+        </article>
+        <article class="feature-card" onclick="startGame('music')">
+          <span>🎵</span><h3>خمن الأغنية</h3><p>اختبر ذاكرتك الموسيقية.</p>
+        </article>
+        <article class="feature-card" onclick="startGame('governor')">
+          <span>👑</span><h3>الحاكم والجلاد</h3><p>أدوار سرية وقرارات مشبوهة.</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="games" class="screen">
+      <div class="section-head">
+        <button class="back-btn" onclick="showScreen('home')">→ رجوع</button>
+        <h2>اختر لعبتك</h2>
+        <p>اختر لعبة وابدأ الجولة.</p>
+      </div>
+
+      <div class="game-grid">
+        <article class="game-card quiz-card">
+          <div class="game-icon">🧠</div><div><span class="tag">أسئلة</span><h3>هبد الأسئلة</h3><p>أسئلة عامة، سرعة، ونقاط.</p></div>
+          <button class="primary" onclick="openSetup('quiz')">العب الآن</button>
+        </article>
+        <article class="game-card music-card">
+          <div class="game-icon">🎵</div><div><span class="tag">موسيقى</span><h3>خمن الأغنية</h3><p>اسمع الوصف وخمن الأغنية.</p></div>
+          <button class="primary" onclick="openSetup('music')">العب الآن</button>
+        </article>
+        <article class="game-card governor-card">
+          <div class="game-icon">👑</div><div><span class="tag">اجتماعية</span><h3>الحاكم والجلاد</h3><p>حاكم، مفتش، سارق وجلاد.</p></div>
+          <button class="primary" onclick="openSetup('governor')">العب الآن</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="setup" class="screen">
+      <div class="setup-box">
+        <button class="back-btn" onclick="showScreen('games')">→ رجوع</button>
+        <div id="setupIcon" class="setup-icon">🎮</div>
+        <h2 id="setupTitle">إعداد اللعبة</h2>
+        <p id="setupDescription"></p>
+
+        <div class="mode-switch">
+          <button id="friendsMode" class="mode active" onclick="setMode('friends')">👥 مع الأصدقاء</button>
+          <button id="botsMode" class="mode" onclick="setMode('bots')">🤖 مع بوتات</button>
+        </div>
+
+        <label class="field-label">عدد اللاعبين</label>
+        <div class="counter">
+          <button onclick="changePlayers(-1)">−</button><strong id="playerCount">3</strong><button onclick="changePlayers(1)">+</button>
+        </div>
+
+        <div id="namesBox" class="names-box"></div>
+
+        <div id="aiOptionsBox" class="ai-options hidden">
+          <label class="field-label" id="categoryLabel">التصنيف</label>
+          <select id="categorySelect" class="name-input"></select>
+
+          <label class="switch-row">
+            <input type="checkbox" id="useAiToggle" checked>
+            <span id="aiToggleLabel">توليد الأسئلة بالذكاء الاصطناعي</span>
+          </label>
+          <small id="aiHint" class="ai-hint"></small>
+        </div>
+
+        <button class="primary big full" onclick="launchSelectedGame()">ابدأ الجولة 🚀</button>
+      </div>
+    </section>
+
+    <section id="quiz" class="screen game-screen">
+      <div class="game-top">
+        <button class="back-btn" onclick="confirmExit()">✕ خروج</button>
+        <span id="quizRound">الجولة 1</span><span id="quizScore">0 نقطة</span>
+      </div>
+      <div class="progress"><div id="quizProgress"></div></div>
+      <div class="question-box">
+        <span class="tag">🧠 سؤال</span>
+        <h2 id="questionText"></h2>
+        <div id="answers" class="answers"></div>
+        <p id="questionFeedback" class="feedback"></p>
+      </div>
+      <div class="players-mini" id="quizPlayers"></div>
+    </section>
+
+    <section id="music" class="screen game-screen">
+      <div class="game-top">
+        <button class="back-btn" onclick="confirmExit()">✕ خروج</button>
+        <span id="musicRound">الجولة 1</span><span id="musicScore">0 نقطة</span>
+      </div>
+      <div class="music-stage">
+        <div class="vinyl" id="vinyl">♫</div>
+        <img id="songCover" class="song-cover hidden" alt="غلاف الأغنية">
+        <span class="tag">🎵 خمن الأغنية</span>
+        <h2 id="musicClue"></h2>
+        <button class="play-btn" id="playMusicBtn" onclick="playFakeMusic()">▶ تشغيل المقطع</button>
+        <div id="musicAnswers" class="answers"></div>
+        <p id="musicFeedback" class="feedback"></p>
+      </div>
+    </section>
+
+    <section id="governor" class="screen game-screen">
+      <div class="game-top">
+        <button class="back-btn" onclick="confirmExit()">✕ خروج</button>
+        <span id="govRound">الجولة 1</span><span id="govScore">0 نقطة</span>
+      </div>
+      <div class="role-stage">
+        <div class="crown">👑</div>
+        <span class="tag">حاكم والجلاد</span>
+        <h2>مرر الجهاز للاعب التالي</h2>
+        <p>اضغط الزر وشاهد دورك سرًا. لا تدع أحدًا يرى الشاشة!</p>
+        <button class="primary big" onclick="revealRole()">كشف دوري 🔐</button>
+        <div id="roleReveal" class="role-reveal hidden">
+          <small>دورك هو</small><strong id="roleName"></strong><p id="roleDescription"></p>
+          <button class="secondary" onclick="nextGovernorPlayer()">أخفي الدور ← اللاعب التالي</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="results" class="screen">
+      <div class="results-box">
+        <div class="trophy">🏆</div>
+        <h2>انتهت الجولة!</h2>
+        <p id="resultMessage"></p>
+        <div id="leaderboard" class="leaderboard"></div>
+        <button class="primary big full" onclick="showScreen('games')">لعبة جديدة</button>
+        <button class="secondary big full" onclick="showScreen('home')">الرئيسية</button>
+      </div>
+    </section>
+
+    <section id="howto" class="screen">
+      <div class="info-box">
+        <button class="back-btn" onclick="showScreen('home')">→ رجوع</button>
+        <h2>كيف نلعب؟</h2>
+        <div class="rule"><b>👥 مع الأصدقاء</b><p>اجلسوا معًا، اختاروا عدد اللاعبين واكتبوا أسماءكم. الجهاز ينتقل بينكم حسب اللعبة.</p></div>
+        <div class="rule"><b>🤖 مع البوتات</b><p>اختر البوتات وسيتم إنشاء لاعبين افتراضيين مع نقاط تلقائية.</p></div>
+        <div class="rule"><b>🏆 النقاط</b><p>كل إجابة صحيحة تمنحك نقاطًا. في النهاية يظهر ترتيب اللاعبين.</p></div>
+        <div class="rule"><b>🔐 الحاكم والجلاد</b><p>كل لاعب يكشف دوره بسرية. ممنوع الغش 😈.</p></div>
+        <div class="rule"><b>🧠 أسئلة الذكاء الاصطناعي</b><p>في لعبة "هبد الأسئلة" يمكنك اختيار تصنيف وتوليد أسئلة جديدة تلقائيًا في كل مرة عبر خدمة Groq.</p></div>
+        <div class="rule"><b>🎵 أغاني حقيقية</b><p>في لعبة "خمن الأغنية" يمكنك جلب أغانٍ حقيقية مع صور الغلاف من Spotify حسب النوع الموسيقي.</p></div>
+      </div>
+    </section>
+
+    <section id="rules" class="screen">
+      <div class="info-box">
+        <button class="back-btn" onclick="showScreen('home')">→ رجوع</button>
+        <h2>هبدنا</h2>
+        <p>نسخة ويب خفيفة تعمل بالكامل من المتصفح، بدون أي إطار عمل (Framework)، وتُنشر على GitHub Pages.</p>
+        <p class="muted">الأسئلة والأغاني المولّدة بالذكاء الاصطناعي تُجلب عبر خادم وسيط (Worker) يحمي مفاتيح الـ API ولا يظهرها أبدًا في المتصفح.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer>هبدنا © 2026 — العبوا، اضحكوا، ولا تزعلوا من الهبد 😂</footer>
+  <script src="config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

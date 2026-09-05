@@ -1,0 +1,16 @@
+# إعدادات Cloudflare Worker الخاص بـ HABDANA
+# لا يحتوي هذا الملف على أي مفتاح سري — المفاتيح تُضبط عبر
+# "wrangler secret put" (انظر .github/workflows/deploy-worker.yml وREADME.md)
+
+name = "habdana-api"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# متغيرات عامة (غير سرية)
+[vars]
+# اسم موديل Groq المستخدم لتوليد الأسئلة. يمكن تغييره لاحقًا دون تعديل الكود.
+GROQ_MODEL = "llama-3.3-70b-versatile"
+
+# قيّد هذا لاحقًا إلى رابط موقعك على GitHub Pages بدل "*" لحماية أفضل، مثل:
+# ALLOWED_ORIGIN = "https://your-username.github.io"
+ALLOWED_ORIGIN = "*"
